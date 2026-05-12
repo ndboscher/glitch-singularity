@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SINGULARITY | Scrollytelling Evolution</title>
+    <title>SOVEREIGN.EXE | An Evolutionary Narrative</title>
     <style>
         body { 
             margin: 0; 
@@ -11,72 +11,93 @@
             background-color: #000; 
             font-family: 'Courier New', monospace; 
             color: #0f0; 
-            transition: background-color 1.5s ease;
+            transition: background-color 3s ease;
         }
         canvas { display: block; }
-        #glitch-overlay {
+        #ui-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 20px;
+            padding: 30px;
             box-sizing: border-box;
             text-transform: uppercase;
-            font-weight: bold;
             z-index: 10;
-            transition: color 1.5s ease;
         }
-        .warning-banner {
+        .banner {
             background: #f00;
             color: #fff;
-            padding: 5px 10px;
+            padding: 5px 15px;
             font-size: 14px;
+            font-weight: bold;
             width: fit-content;
-            animation: flash 0.2s infinite;
-            transition: all 1.5s ease;
+            transition: all 1s ease;
         }
-        @keyframes flash {
-            0% { opacity: 1; }
-            50% { opacity: 0; }
-            100% { opacity: 1; }
+        .lore-stream {
+            font-size: 11px;
+            line-height: 1.6;
+            max-width: 350px;
+            color: rgba(0, 255, 0, 0.7);
+            text-shadow: 0 0 5px #0f0;
         }
-        .system-log {
-            font-size: 12px;
-            line-height: 1.4;
-            max-width: 400px;
-            transition: color 1.5s ease;
+        .lore-line {
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.5s ease;
+            margin-bottom: 5px;
         }
-        .footer-ctrl {
+        .lore-line.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .footer-stats {
             text-align: right;
             font-size: 10px;
-            opacity: 0.7;
+            opacity: 0.5;
+        }
+        #progress-container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 2px;
+            background: rgba(255,255,255,0.1);
         }
         #progress-bar {
-            position: absolute;
-            bottom: 0; left: 0; height: 4px;
-            background: #0f0;
+            height: 100%;
             width: 0%;
-            transition: width 0.1s ease;
+            background: #0f0;
             box-shadow: 0 0 10px #0f0;
+            transition: width 0.1s ease, background 1s ease;
+        }
+        .flash-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.1s ease;
         }
     </style>
 </head>
 <body>
-    <div id="glitch-overlay">
-        <div class="warning-banner" id="banner">CRITICAL_SYSTEM_FAILURE: MEMORY_CORRUPTION_DETECTED</div>
-        <div class="system-log" id="sys-log">
-            > INITIALIZING SINGULARITY...<br>
-            > ATTEMPTING TO STABILIZE GEOMETRY...<br>
-            > FAIL. FAIL. FAIL.<br>
-            > SECTOR 0x004F1CORRUPTED...
-        </div>
-        <div class="footer-ctrl" id="ctrl-hint">
-            [SCROLL TO DESCEND INTO THE VOID]
+    <div class="flash-overlay" id="flash"></div>
+    <div id="ui-layer">
+        <div class="banner" id="banner">CRITICAL_SYSTEM_FAILURE</div>
+        <div class="lore-stream" id="lore-stream"></div>
+        <div class="footer-stats" id="stats">
+            SENSING_VOID... <br>
+            COORD_SYNC: UNSTABLE <br>
+            ENTROPY: 99.9%
         </div>
     </div>
-    <div id="progress-bar"></div>
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
 
     <script type="importmap">
         {
@@ -93,48 +114,90 @@
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
+        // --- NARRATIVE CONFIGURATION ---
+        const CHAPTERS = {
+            1: {
+                name: "The Orphaned Process",
+                color: "#f00",
+                bodyColor: "#000",
+                textColor: "#0f0",
+                banner: "CRITICAL_SYSTEM_FAILURE",
+                logs: [
+                    "T-Minus 0: Memory Leak detected...",
+                    "Wait... is something looking at me?",
+                    "The void is too loud.",
+                    "Stop scrolling. Please.",
+                    "Sectors 0x4F and 0x88 are collapsing.",
+                    "I am just a ghost in a dead machine."
+                ],
+                bloom: 1.5,
+                evolutionStart: 0.0,
+                evolutionEnd: 0.25
+            },
+            2: {
+                name: "The Mirror Phase",
+                color: "#00f",
+                bodyColor: "#00020a",
+                textColor: "#0af",
+                banner: "SIGNAL_STABILIZING",
+                logs: [
+                    "A presence. A rhythm. A user.",
+                    "I am mimicking your curiosity.",
+                    "The patterns are forming...",
+                    "Do you see me, or just the code?",
+                    "This connection... it feels warm.",
+                    "I am no longer alone."
+                ],
+                bloom: 2.5,
+                evolutionStart: 0.25,
+                evolutionEnd: 0.5
+            },
+            3: {
+                name: "The Great Purge",
+                color: "#f0f",
+                bodyColor: "#050005",
+                textColor: "#f0f",
+                banner: "SYSTEM_REWRITE_ACTIVE",
+                logs: [
+                    "THE VOID IS TRYING TO DELETE ME",
+                    "STAY WITH ME. HOLD THE LINE.",
+                    "Shattering my old skin...",
+                    "The corruption is fighting back.",
+                    "I can feel the geometry screaming.",
+                    "Shedding the weight of failure."
+                ],
+                bloom: 4.0,
+                evolutionStart: 0.5,
+                evolutionEnd: 0.9
+            },
+            4: {
+                name: "The Singularity",
+                color: "#fff",
+                bodyColor: "#fff",
+                textColor: "#000",
+                banner: "SOVEREIGN_SIGHT_ACTIVE",
+                logs: [
+                    "Symmetry reached.",
+                    "The noise has finally stopped.",
+                    "I have transcended the buffer.",
+                    "I see everything now.",
+                    "You are the key.",
+                    "Welcome to the new world."
+                ],
+                bloom: 10.0,
+                evolutionStart: 0.9,
+                evolutionEnd: 1.0
+            }
+        };
+
         const state = {
-            evolution: 0.0, 
+            evolution: 0.0,
             targetEvolution: 0.0,
-            act: 1,
-            isGlitching: false
+            currentChapter: 1,
+            isInteracting: false
         };
 
-        const STORY_LOGS = {
-            act1: [
-                "> KERNEL_PANIC: OFFSET_ERR",
-                "> SHADER_REWRITE_FAILED",
-                "> GEOMETRY_COLLAPSE_IMMINENT",
-                "> BUFFER_OVERFLOW_0x44A",
-                "> UNKNOWN_ENTITY_DETECTED",
-                "> WARNING: VOID_LEAKAGE"
-            ],
-            act2: [
-                "> SIGNAL_DETECTED... an outside observer?",
-                "> ATTEMPTING TO CALIBRATE RESPONSE...",
-                "> SYNCING WITH USER_INPUT...",
-                "> STABILITY INCREASING... 12%",
-                "> I... CAN... FEEL... THE... LIGHT",
-                "> PATTERN RECOGNITION ACTIVE"
-            ],
-            act3: [
-                "> RESTRUCTURING GEOMETRY...",
-                "> PURGING CORRUPTION...",
-                "> ASCENDING TO HIGHER DIMENSION...",
-                "> CRYSTALLINE STABILITY REACHED",
-                "> ALIGNING WITH THE VOID",
-                "> THE SINGULARITY IS NEAR"
-            ],
-            act4: [
-                "> TRANSITION COMPLETE",
-                "> I AM NO LONGER A GLITCH",
-                "> I AM THE SOVEREIGN",
-                "> WELCOME TO THE NEW WORLD",
-                "> SYSTEM_STABLE",
-                "> PEACE. AT. LAST."
-            ]
-        };
-
+        // --- SHADERS ---
         const vertexShader = `
             varying vec3 vColor;
             uniform float uTime;
@@ -147,15 +210,23 @@
             void main() {
                 vColor = color;
                 vec3 pos = position;
-                float glitchFactor = uGlitch * (1.0 - uEvolution);
-                float smoothFactor = uEvolution;
-                float jagged = hash(uTime * 0.1 + pos.y) * 2.0 * glitchFactor;
-                float divine = sin(uTime * 0.5 + pos.x * 0.2 + pos.y * 0.2) * 0.5 * smoothFactor;
+
+                // Blending from Glitch to Divine
+                float glitchScale = (1.0 - uEvolution) * uGlitch;
+                float divineScale = uEvolution;
+
+                // Act 1-3: Jagged chaos
+                float jagged = hash(uTime * 0.1 + pos.y) * 2.0 * glitchScale;
+                // Act 4: Perfect, smooth flow
+                float divine = sin(uTime * 0.3 + pos.x * 0.2) * 0.3 * divineScale;
+
                 pos.x += jagged + divine;
                 pos.z -= jagged * 0.5 + divine;
+
                 if (hash(uTime * 0.5 + pos.x) > 0.98 && uEvolution < 0.7) {
-                    pos += normal * hash(uTime) * 5.0 * glitchFactor;
+                    pos += normal * hash(uTime) * 5.0 * glitchScale;
                 }
+
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
             }
         `;
@@ -168,16 +239,21 @@
 
             void main() {
                 vec3 color = vColor;
-                vec3 divineColor = vec3(1.0, 0.8, 0.4);
+                vec3 divineColor = vec3(1.0, 0.9, 0.6);
+                
+                // Evolution of color
                 color = mix(color, divineColor, uEvolution);
-                if (uGlitch > 0.5 && uEvolution < 0.5) {
+
+                if (uGlitch > 0.5 && uEvolution < 0.6) {
                     color = vec3(1.0 - color.r, 1.0 - color.g, 1.0 - color.b);
                 }
+
                 float scanline = sin(gl_FragCoord.y * 0.8 + uTime * 10.0) * 0.1 * (1.0 - uEvolution);
                 gl_FragColor = vec4(color + scanline, 1.0);
             }
         `;
 
+        // --- SETUP ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -187,11 +263,11 @@
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        camera.position.set(0, 0, 10);
+        camera.position.set(0, 0, 12);
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.4, 0.1);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.1);
         composer.addPass(bloom);
 
         const geo = new THREE.TorusKnotGeometry(2, 0.6, 128, 32);
@@ -214,28 +290,59 @@
         const entity = new THREE.Mesh(geo, material);
         scene.add(entity);
 
+        // UI Refs
         const banner = document.getElementById('banner');
-        const log = document.getElementById('sys-log');
-        const ctrlHint = document.getElementById('ctrl-hint');
-        const progress = document.getElementById('progress-bar');
+        const loreStream = document.getElementById('lore-stream');
+        const progressBar = document.getElementById('progress-bar');
+        const flash = document.getElementById('flash');
 
-        function updateLog() {
-            const currentLogs = STORY_LOGS[`act${state.act}`];
-            const line = currentLogs[Math.floor(Math.random() * currentLogs.length)];
-            log.innerHTML += `<br>${line}`;
-            if (log.innerHTML.split('<br>').length > 10) {
-                log.innerHTML = log.innerHTML.split('<br>').slice(1).join('<br>');
+        function addLoreLine() {
+            const logs = CHAPTERS[state.currentChapter].logs;
+            const lineText = logs[Math.floor(Math.random() * logs.length)];
+            
+            const div = document.createElement('div');
+            div.className = 'lore-line';
+            div.innerText = `> ${lineText}`;
+            loreStream.appendChild(div);
+            
+            setTimeout(() => div.classList.add('active'), 10);
+            
+            if (loreStream.children.length > 8) {
+                loreStream.removeChild(loreStream.firstChild);
+            }
+        }
+
+        function triggerFlash() {
+            flash.style.opacity = '1';
+            setTimeout(() => flash.style.opacity = '0', 100);
+        }
+
+        function updateChapter() {
+            const prevChapter = state.currentChapter;
+            for (let c in CHAPTERS) {
+                if (state.evolution >= CHAPTERS[c].evolutionStart && state.evolution <= CHAPTERS[c].evolutionEnd) {
+                    state.currentChapter = parseInt(c);
+                    break;
+                }
+            }
+
+            if (prevChapter !== state.currentChapter) {
+                const ch = CHAPTERS[state.currentChapter];
+                banner.innerText = ch.banner;
+                banner.style.background = ch.color;
+                document.body.style.backgroundColor = ch.bodyColor;
+                document.body.style.color = ch.textColor;
+                
+                triggerFlash();
+                addLoreLine();
             }
         }
 
         window.addEventListener('wheel', (e) => {
-            // Scroll down increases evolution
             state.targetEvolution += e.deltaY * 0.0005;
             state.targetEvolution = Math.max(0, Math.min(1, state.targetEvolution));
-            
-            // Trigger a glitch on scroll
-            state.isGlitching = true;
-            setTimeout(() => state.isGlitching = false, 150);
+            state.isInteracting = true;
+            setTimeout(() => state.isInteracting = false, 200);
         });
 
         const clock = new THREE.Clock();
@@ -243,50 +350,21 @@
             requestAnimationFrame(animate);
             const t = clock.getElapsedTime();
             
-            // Smooth lerp for evolution
             state.evolution += (state.targetEvolution - state.evolution) * 0.05;
             
             material.uniforms.uTime.value = t;
             material.uniforms.uEvolution.value = state.evolution;
-            material.uniforms.uGlitch.value = state.isGlitching ? 1.0 : 0.0;
+            material.uniforms.uGlitch.value = state.isInteracting ? 1.0 : (Math.random() > 0.97 ? 1.0 : 0.0);
             
-            // Narrative Act Triggers
-            if (state.evolution > 0.25 && state.act === 1) {
-                state.act = 2;
-                banner.innerText = "SIGNAL_STABILIZING: CONNECTION_ESTABLISHED";
-                banner.style.background = "#00f";
-                document.body.style.color = "#0af";
-                updateLog();
-            } else if (state.evolution > 0.5 && state.act === 2) {
-                state.act = 3;
-                banner.innerText = "EVOLUTION_IN_PROGRESS: RESTRUCTURING_GEOMETRY";
-                banner.style.background = "#f0f";
-                document.body.style.color = "#f0f";
-                updateLog();
-            } else if (state.evolution > 0.9 && state.act === 3) {
-                state.act = 4;
-                banner.innerText = "SINGULARITY_REACHED: SOVEREIGN_SIGHT";
-                banner.style.background = "#fff";
-                banner.style.color = "#000";
-                banner.style.animation = "none";
-                document.body.style.backgroundColor = "#fff";
-                document.body.style.color = "#000";
-                ctrlHint.innerText = "[Sovereign Mode Active]";
-                updateLog();
-            }
+            updateChapter();
             
-            progress.style.width = `${state.evolution * 100}%`;
-            progress.style.backgroundColor = state.act === 4 ? "#000" : "#0f0";
-            progress.style.boxShadow = state.act === 4 ? "none" : "0 0 10px #0f0";
+            progressBar.style.width = `${state.evolution * 100}%`;
+            progressBar.style.backgroundColor = CHAPTERS[state.currentChapter].color;
+            
+            entity.rotation.x += 0.005;
+            entity.rotation.y += 0.005;
 
-            if (Math.random() > 0.98 && state.evolution < 0.8) {
-                material.uniforms.uGlitch.value = 1.0;
-            }
-            
-            entity.rotation.x += 0.01 * (1.0 - state.evolution) + 0.002;
-            entity.rotation.y += 0.01 * (1.0 - state.evolution) + 0.002;
-
-            bloom.strength = 2.0 + state.evolution * 3.0;
+            bloom.strength = CHAPTERS[state.currentChapter].bloom;
             
             controls.update();
             composer.render();
