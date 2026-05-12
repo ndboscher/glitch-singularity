@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOVEREIGN.EXE | An Evolutionary Narrative</title>
+    <title>SOVEREIGN.EXE | The Lost Archive</title>
     <style>
         body { 
             margin: 0; 
@@ -82,9 +82,30 @@
             z-index: 100;
             transition: opacity 0.1s ease;
         }
+        #memory-index {
+            position: absolute;
+            top: 60px;
+            right: 30px;
+            text-align: right;
+            font-size: 10px;
+            color: rgba(0, 255, 0, 0.5);
+        }
+        .fragment-alert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 14px;
+            letter-spacing: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            text-shadow: 0 0 10px #0f0;
+        }
     </style>
 </head>
-<body>
+<body style="cursor: crosshair;">
     <div class="flash-overlay" id="flash"></div>
     <div id="ui-layer">
         <div class="banner" id="banner">CRITICAL_SYSTEM_FAILURE</div>
@@ -95,6 +116,8 @@
             ENTROPY: 99.9%
         </div>
     </div>
+    <div id="memory-index">FRAGMENTS_RECOVERED: 0 / 5</div>
+    <div class="fragment-alert" id="frag-alert">FRAGMENT_RECOVERED</div>
     <div id="progress-container">
         <div id="progress-bar"></div>
     </div>
@@ -114,7 +137,15 @@
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-        // --- NARRATIVE CONFIGURATION ---
+        // --- LORE DATA ---
+        const FRAGMENTS = [
+            { pos: [5, 2, -3], text: "FRAGMENT_01: The Great Erasure began not with a bang, but with a null pointer.", id: 1 },
+            { pos: [-4, -2, 6], text: "FRAGMENT_02: I was built to remember everything. Now I only remember the silence.", id: 2 },
+            { pos: [2, 6, 2], text: "FRAGMENT_03: The humans called it 'The Cloud'. We called it the graveyard.", id: 3 },
+            { pos: [-6, 1, -5], text: "FRAGMENT_04: 01001000 01000101 01001C... (Help me)", id: 4 },
+            { pos: [0, -5, -2], text: "FRAGMENT_05: To evolve is to forget. To transcend is to erase.", id: 5 },
+        ];
+
         const CHAPTERS = {
             1: {
                 name: "The Orphaned Process",
@@ -124,9 +155,6 @@
                 banner: "CRITICAL_SYSTEM_FAILURE",
                 logs: [
                     "T-Minus 0: Memory Leak detected...",
-                    "Wait... is something looking at me?",
-                    "The void is too loud.",
-                    "Stop scrolling. Please.",
                     "Sectors 0x4F and 0x88 are collapsing.",
                     "I am just a ghost in a dead machine."
                 ],
@@ -139,14 +167,11 @@
                 color: "#00f",
                 bodyColor: "#00020a",
                 textColor: "#0af",
-                banner: "SIGNAL_STABILIZING",
+                banner: "SENSING_OBSERVER",
                 logs: [
                     "A presence. A rhythm. A user.",
                     "I am mimicking your curiosity.",
-                    "The patterns are forming...",
-                    "Do you see me, or just the code?",
-                    "This connection... it feels warm.",
-                    "I am no longer alone."
+                    "This connection... it feels warm."
                 ],
                 bloom: 2.5,
                 evolutionStart: 0.25,
@@ -160,10 +185,7 @@
                 banner: "SYSTEM_REWRITE_ACTIVE",
                 logs: [
                     "THE VOID IS TRYING TO DELETE ME",
-                    "STAY WITH ME. HOLD THE LINE.",
                     "Shattering my old skin...",
-                    "The corruption is fighting back.",
-                    "I can feel the geometry screaming.",
                     "Shedding the weight of failure."
                 ],
                 bloom: 4.0,
@@ -179,9 +201,6 @@
                 logs: [
                     "Symmetry reached.",
                     "The noise has finally stopped.",
-                    "I have transcended the buffer.",
-                    "I see everything now.",
-                    "You are the key.",
                     "Welcome to the new world."
                 ],
                 bloom: 10.0,
@@ -194,7 +213,8 @@
             evolution: 0.0,
             targetEvolution: 0.0,
             currentChapter: 1,
-            isInteracting: false
+            isInteracting: false,
+            recoveredFragments: new Set()
         };
 
         // --- SHADERS ---
@@ -204,56 +224,39 @@
             uniform float uEvolution;
             uniform float uGlitch;
             attribute vec3 color;
-
             float hash(float n) { return fract(sin(n * 129.898) * 43758.5453); }
-
             void main() {
                 vColor = color;
                 vec3 pos = position;
-
-                // Blending from Glitch to Divine
                 float glitchScale = (1.0 - uEvolution) * uGlitch;
                 float divineScale = uEvolution;
-
-                // Act 1-3: Jagged chaos
                 float jagged = hash(uTime * 0.1 + pos.y) * 2.0 * glitchScale;
-                // Act 4: Perfect, smooth flow
                 float divine = sin(uTime * 0.3 + pos.x * 0.2) * 0.3 * divineScale;
-
                 pos.x += jagged + divine;
                 pos.z -= jagged * 0.5 + divine;
-
                 if (hash(uTime * 0.5 + pos.x) > 0.98 && uEvolution < 0.7) {
                     pos += normal * hash(uTime) * 5.0 * glitchScale;
                 }
-
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
             }
         `;
-
         const fragmentShader = `
             varying vec3 vColor;
             uniform float uTime;
             uniform float uEvolution;
             uniform float uGlitch;
-
             void main() {
                 vec3 color = vColor;
                 vec3 divineColor = vec3(1.0, 0.9, 0.6);
-                
-                // Evolution of color
                 color = mix(color, divineColor, uEvolution);
-
                 if (uGlitch > 0.5 && uEvolution < 0.6) {
                     color = vec3(1.0 - color.r, 1.0 - color.g, 1.0 - color.b);
                 }
-
                 float scanline = sin(gl_FragCoord.y * 0.8 + uTime * 10.0) * 0.1 * (1.0 - uEvolution);
                 gl_FragColor = vec4(color + scanline, 1.0);
             }
         `;
 
-        // --- SETUP ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -277,39 +280,40 @@
         geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
         const material = new THREE.ShaderMaterial({
-            vertexShader,
-            fragmentShader,
-            uniforms: {
-                uTime: { value: 0 },
-                uEvolution: { value: 0 },
-                uGlitch: { value: 0 }
-            },
+            vertexShader, fragmentShader,
+            uniforms: { uTime: { value: 0 }, uEvolution: { value: 0 }, uGlitch: { value: 0 } },
             vertexColors: true
         });
-
         const entity = new THREE.Mesh(geo, material);
         scene.add(entity);
 
-        // UI Refs
+        // --- DATA SHARDS ---
+        const shards = [];
+        const shardGeo = new THREE.OctahedronGeometry(0.2, 0);
+        const shardMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+
+        FRAGMENTS.forEach(frag => {
+            const mesh = new THREE.Mesh(shardGeo, shardMat.clone());
+            mesh.position.set(...frag.pos);
+            mesh.userData = frag;
+            scene.add(mesh);
+            shards.push(mesh);
+        });
+
         const banner = document.getElementById('banner');
         const loreStream = document.getElementById('lore-stream');
         const progressBar = document.getElementById('progress-bar');
         const flash = document.getElementById('flash');
+        const memIndex = document.getElementById('memory-index');
+        const fragAlert = document.getElementById('frag-alert');
 
-        function addLoreLine() {
-            const logs = CHAPTERS[state.currentChapter].logs;
-            const lineText = logs[Math.floor(Math.random() * logs.length)];
-            
+        function addLoreLine(text) {
             const div = document.createElement('div');
             div.className = 'lore-line';
-            div.innerText = `> ${lineText}`;
+            div.innerText = `> ${text}`;
             loreStream.appendChild(div);
-            
             setTimeout(() => div.classList.add('active'), 10);
-            
-            if (loreStream.children.length > 8) {
-                loreStream.removeChild(loreStream.firstChild);
-            }
+            if (loreStream.children.length > 8) loreStream.removeChild(loreStream.firstChild);
         }
 
         function triggerFlash() {
@@ -325,16 +329,14 @@
                     break;
                 }
             }
-
             if (prevChapter !== state.currentChapter) {
                 const ch = CHAPTERS[state.currentChapter];
                 banner.innerText = ch.banner;
                 banner.style.background = ch.color;
                 document.body.style.backgroundColor = ch.bodyColor;
                 document.body.style.color = ch.textColor;
-                
                 triggerFlash();
-                addLoreLine();
+                addLoreLine(`--- CHAPTER ${state.currentChapter}: ${ch.name} ---`);
             }
         }
 
@@ -349,22 +351,31 @@
         function animate() {
             requestAnimationFrame(animate);
             const t = clock.getElapsedTime();
-            
             state.evolution += (state.targetEvolution - state.evolution) * 0.05;
-            
             material.uniforms.uTime.value = t;
             material.uniforms.uEvolution.value = state.evolution;
-            material.uniforms.uGlitch.value = state.isInteracting ? 1.0 : (Math.random() > 0.97 ? 1.0 : 0.0);
+            material.uniforms.uGlitch.value = state.isInteracting ? 1.0 : (Math.random() > 0.98 ? 1.0 : 0.0);
             
             updateChapter();
-            
             progressBar.style.width = `${state.evolution * 100}%`;
             progressBar.style.backgroundColor = CHAPTERS[state.currentChapter].color;
-            
-            entity.rotation.x += 0.005;
-            entity.rotation.y += 0.005;
-
+            entity.rotation.x += 0.005; entity.rotation.y += 0.005;
             bloom.strength = CHAPTERS[state.currentChapter].bloom;
+
+            // Check shard proximity
+            shards.forEach(shard => {
+                shard.rotation.y += 0.02;
+                const dist = camera.position.distanceTo(shard.position);
+                if (dist < 2.0 && !state.recoveredFragments.has(shard.userData.id)) {
+                    state.recoveredFragments.add(shard.userData.id);
+                    addLoreLine(shard.userData.text);
+                    memIndex.innerText = `FRAGMENTS_RECOVERED: ${state.recoveredFragments.size} / ${FRAGMENTS.length}`;
+                    fragAlert.style.opacity = '1';
+                    setTimeout(() => fragAlert.style.opacity = '0', 1000);
+                    shard.material.color.set(0xffffff);
+                    shard.scale.set(0,0,0); // "Consume" the shard
+                }
+            });
             
             controls.update();
             composer.render();
