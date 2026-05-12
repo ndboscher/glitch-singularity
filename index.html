@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SINGULARITY | Evolutionary Narrative</title>
+    <title>SINGULARITY | Scrollytelling Evolution</title>
     <style>
         body { 
             margin: 0; 
@@ -11,7 +11,7 @@
             background-color: #000; 
             font-family: 'Courier New', monospace; 
             color: #0f0; 
-            transition: background-color 2s ease;
+            transition: background-color 1.5s ease;
         }
         canvas { display: block; }
         #glitch-overlay {
@@ -26,7 +26,7 @@
             text-transform: uppercase;
             font-weight: bold;
             z-index: 10;
-            transition: color 2s ease;
+            transition: color 1.5s ease;
         }
         .warning-banner {
             background: #f00;
@@ -35,7 +35,7 @@
             font-size: 14px;
             width: fit-content;
             animation: flash 0.2s infinite;
-            transition: all 2s ease;
+            transition: all 1.5s ease;
         }
         @keyframes flash {
             0% { opacity: 1; }
@@ -46,12 +46,20 @@
             font-size: 12px;
             line-height: 1.4;
             max-width: 400px;
-            transition: color 2s ease;
+            transition: color 1.5s ease;
         }
         .footer-ctrl {
             text-align: right;
             font-size: 10px;
             opacity: 0.7;
+        }
+        #progress-bar {
+            position: absolute;
+            bottom: 0; left: 0; height: 4px;
+            background: #0f0;
+            width: 0%;
+            transition: width 0.1s ease;
+            box-shadow: 0 0 10px #0f0;
         }
     </style>
 </head>
@@ -65,9 +73,10 @@
             > SECTOR 0x004F1CORRUPTED...
         </div>
         <div class="footer-ctrl" id="ctrl-hint">
-            [CLICK TO INTERACT WITH THE VOID]
+            [SCROLL TO DESCEND INTO THE VOID]
         </div>
     </div>
+    <div id="progress-bar"></div>
 
     <script type="importmap">
         {
@@ -84,11 +93,11 @@
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-        // --- NARRATIVE STATE ---
         const state = {
-            evolution: 0.0, // 0 (Chaos) -> 1 (Sovereign)
+            evolution: 0.0, 
+            targetEvolution: 0.0,
             act: 1,
-            interacting: false
+            isGlitching: false
         };
 
         const STORY_LOGS = {
@@ -126,7 +135,6 @@
             ]
         };
 
-        // --- SHADERS ---
         const vertexShader = `
             varying vec3 vColor;
             uniform float uTime;
@@ -139,24 +147,15 @@
             void main() {
                 vColor = color;
                 vec3 pos = position;
-
-                // Blend between Jagged Glitch and Smooth Sphere
                 float glitchFactor = uGlitch * (1.0 - uEvolution);
                 float smoothFactor = uEvolution;
-
-                // Chaos Motion
                 float jagged = hash(uTime * 0.1 + pos.y) * 2.0 * glitchFactor;
-                
-                // Divine Motion (Laminar Flow)
                 float divine = sin(uTime * 0.5 + pos.x * 0.2 + pos.y * 0.2) * 0.5 * smoothFactor;
-
                 pos.x += jagged + divine;
                 pos.z -= jagged * 0.5 + divine;
-
                 if (hash(uTime * 0.5 + pos.x) > 0.98 && uEvolution < 0.7) {
                     pos += normal * hash(uTime) * 5.0 * glitchFactor;
                 }
-
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
             }
         `;
@@ -169,21 +168,16 @@
 
             void main() {
                 vec3 color = vColor;
-                
-                // Evolution of color: Green/Red (Chaos) -> Gold/White (Divine)
                 vec3 divineColor = vec3(1.0, 0.8, 0.4);
                 color = mix(color, divineColor, uEvolution);
-
                 if (uGlitch > 0.5 && uEvolution < 0.5) {
                     color = vec3(1.0 - color.r, 1.0 - color.g, 1.0 - color.b);
                 }
-                
                 float scanline = sin(gl_FragCoord.y * 0.8 + uTime * 10.0) * 0.1 * (1.0 - uEvolution);
                 gl_FragColor = vec4(color + scanline, 1.0);
             }
         `;
 
-        // --- THREE.JS SETUP ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -220,10 +214,10 @@
         const entity = new THREE.Mesh(geo, material);
         scene.add(entity);
 
-        // UI elements
         const banner = document.getElementById('banner');
         const log = document.getElementById('sys-log');
         const ctrlHint = document.getElementById('ctrl-hint');
+        const progress = document.getElementById('progress-bar');
 
         function updateLog() {
             const currentLogs = STORY_LOGS[`act${state.act}`];
@@ -234,25 +228,41 @@
             }
         }
 
-        window.addEventListener('mousedown', () => {
-            state.interacting = true;
-            material.uniforms.uGlitch.value = 1.0;
+        window.addEventListener('wheel', (e) => {
+            // Scroll down increases evolution
+            state.targetEvolution += e.deltaY * 0.0005;
+            state.targetEvolution = Math.max(0, Math.min(1, state.targetEvolution));
             
-            // Increase evolution on interaction
-            state.evolution += 0.02;
-            if (state.evolution > 1.0) state.evolution = 1.0;
+            // Trigger a glitch on scroll
+            state.isGlitching = true;
+            setTimeout(() => state.isGlitching = false, 150);
+        });
+
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
             
-            // Advance Acts
+            // Smooth lerp for evolution
+            state.evolution += (state.targetEvolution - state.evolution) * 0.05;
+            
+            material.uniforms.uTime.value = t;
+            material.uniforms.uEvolution.value = state.evolution;
+            material.uniforms.uGlitch.value = state.isGlitching ? 1.0 : 0.0;
+            
+            // Narrative Act Triggers
             if (state.evolution > 0.25 && state.act === 1) {
                 state.act = 2;
                 banner.innerText = "SIGNAL_STABILIZING: CONNECTION_ESTABLISHED";
                 banner.style.background = "#00f";
                 document.body.style.color = "#0af";
+                updateLog();
             } else if (state.evolution > 0.5 && state.act === 2) {
                 state.act = 3;
                 banner.innerText = "EVOLUTION_IN_PROGRESS: RESTRUCTURING_GEOMETRY";
                 banner.style.background = "#f0f";
                 document.body.style.color = "#f0f";
+                updateLog();
             } else if (state.evolution > 0.9 && state.act === 3) {
                 state.act = 4;
                 banner.innerText = "SINGULARITY_REACHED: SOVEREIGN_SIGHT";
@@ -262,23 +272,13 @@
                 document.body.style.backgroundColor = "#fff";
                 document.body.style.color = "#000";
                 ctrlHint.innerText = "[Sovereign Mode Active]";
+                updateLog();
             }
             
-            updateLog();
-        });
+            progress.style.width = `${state.evolution * 100}%`;
+            progress.style.backgroundColor = state.act === 4 ? "#000" : "#0f0";
+            progress.style.boxShadow = state.act === 4 ? "none" : "0 0 10px #0f0";
 
-        window.addEventListener('mouseup', () => {
-            state.interacting = false;
-            material.uniforms.uGlitch.value = 0.0;
-        });
-
-        const clock = new THREE.Clock();
-        function animate() {
-            requestAnimationFrame(animate);
-            const t = clock.getElapsedTime();
-            material.uniforms.uTime.value = t;
-            material.uniforms.uEvolution.value = state.evolution;
-            
             if (Math.random() > 0.98 && state.evolution < 0.8) {
                 material.uniforms.uGlitch.value = 1.0;
             }
@@ -286,7 +286,6 @@
             entity.rotation.x += 0.01 * (1.0 - state.evolution) + 0.002;
             entity.rotation.y += 0.01 * (1.0 - state.evolution) + 0.002;
 
-            // Smoothly transition bloom
             bloom.strength = 2.0 + state.evolution * 3.0;
             
             controls.update();
