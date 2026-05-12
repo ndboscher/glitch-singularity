@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLITCH SINGULARITY // SYSTEM_FAILURE</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000; 
+            font-family: 'Courier New', monospace; 
+            color: #0f0; 
+        }
+        canvas { display: block; }
+        #glitch-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+            text-transform: uppercase;
+            font-weight: bold;
+            z-index: 10;
+        }
+        .warning-banner {
+            background: #f00;
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 14px;
+            width: fit-content;
+            animation: flash 0.2s infinite;
+        }
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .system-log {
+            font-size: 12px;
+            line-height: 1.4;
+            max-width: 400px;
+        }
+        .footer-ctrl {
+            text-align: right;
+            font-size: 10px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div id="glitch-overlay">
+        <div class="warning-banner">CRITICAL_SYSTEM_FAILURE: MEMORY_CORRUPTION_DETECTED</div>
+        <div class="system-log" id="sys-log">
+            > INITIALIZING SINGULARITY...<br>
+            > ATTEMPTING TO STABILIZE GEOMETRY...<br>
+            > FAIL. FAIL. FAIL.<br>
+            > SECTOR 0x004F1CORRUPTED...
+        </div>
+        <div class="footer-ctrl">
+            [CLICK TO FORCE OVERRIDE]
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // --- GLITCH SHADERS ---
+        const vertexShader = `
+            varying vec3 vColor;
+            uniform float uTime;
+            uniform float uGlitch;
+            attribute vec3 color;
+
+            // Sharp step noise
+            float hash(float n) { return fract(sin(n * 129.898) * 43758.5453); }
+
+            void main() {
+                vColor = color;
+                vec3 pos = position;
+
+                // Jagged displacement
+                float glitchOffset = hash(uTime * 0.1 + pos.y) * uGlitch * 2.0;
+                pos.x += glitchOffset;
+                pos.z -= glitchOffset * 0.5;
+
+                // Random spikes
+                if (hash(uTime * 0.5 + pos.x) > 0.98) {
+                    pos += normal * hash(uTime) * 5.0 * uGlitch;
+                }
+
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            varying vec3 vColor;
+            uniform float uTime;
+            uniform float uGlitch;
+
+            void main() {
+                // Rapid color shifting
+                vec3 color = vColor;
+                if (uGlitch > 0.5) {
+                    color = vec3(1.0 - color.r, 1.0 - color.g, 1.0 - color.b);
+                }
+                
+                // Add scanning lines
+                float scanline = sin(gl_FragCoord.y * 0.8 + uTime * 10.0) * 0.1;
+                gl_FragColor = vec4(color + scanline, 1.0);
+            }
+        `;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: false }); // No AA for that raw look
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        camera.position.set(0, 0, 10);
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.4, 0.1));
+
+        // The Entity
+        const geo = new THREE.TorusKnotGeometry(2, 0.6, 128, 32);
+        const positions = geo.attributes.position.array;
+        const colors = new Float32Array(positions.length);
+        for(let i=0; i<colors.length; i++) colors[i] = Math.random();
+
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.ShaderMaterial({
+            vertexShader,
+            fragmentShader,
+            uniforms: {
+                uTime: { value: 0 },
+                uGlitch: { value: 0 }
+            },
+            vertexColors: true
+        });
+
+        const entity = new THREE.Mesh(geo, material);
+        scene.add(entity);
+
+        const log = document.getElementById('sys-log');
+        const logs = [
+            "> KERNEL_PANIC: OFFSET_ERR",
+            "> SHADER_REWRITE_FAILED",
+            "> GEOMETRY_COLLAPSE_IMMINENT",
+            "> BUFFER_OVERFLOW_0x44A",
+            "> UNKNOWN_ENTITY_DETECTED",
+            "> RESETTING_CLOCK_SKEW...",
+            "> WARNING: VOID_LEAKAGE"
+        ];
+
+        function updateLog() {
+            const line = logs[Math.floor(Math.random() * logs.length)];
+            log.innerHTML += `<br>${line}`;
+            if (log.innerHTML.split('<br>').length > 10) {
+                log.innerHTML = log.innerHTML.split('<br>').slice(1).join('<br>');
+            }
+        }
+
+        window.addEventListener('mousedown', () => {
+            material.uniforms.uGlitch.value = 1.0;
+            updateLog();
+        });
+        window.addEventListener('mouseup', () => {
+            material.uniforms.uGlitch.value = 0.0;
+        });
+
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
+            material.uniforms.uTime.value = t;
+            
+            // Random micro-glitches
+            if (Math.random() > 0.98) {
+                material.uniforms.uGlitch.value = 1.0;
+            }
+            
+            entity.rotation.x += 0.01;
+            entity.rotation.y += 0.01;
+            
+            controls.update();
+            composer.render();
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    }
+    </script>
+</body>
+</html>
